@@ -16,15 +16,6 @@ else
 fi
 echo "**** Linux architecture found: ${ARCH} ****"
 
-echo "**** Checking for cloudflared setup script dependencies... ****"
-YQARCH="${ARCH}"
-if [ "${YQ_ARCH}" = "armhf" ]; then 
-  YQARCH="arm" 
-fi
-echo "**** Temporarily installing /tmp/yq... ****"
-curl -sLo /tmp/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQARCH}
-chmod +x /tmp/yq
-
 echo "**** Installing cloudflared...****"
 if [ -d "/cloudflared/" ]; then
   echo "**** Moving /cloudflared/cloudflared-${ARCH} to /usr/local/bin/cloudflared... ****"
@@ -43,13 +34,24 @@ fi
 cloudflared -v
 
 echo "**** Checking for cloudflare tunnel parameters... ****"
-if [[ ${#CF_ZONE_ID} -gt 0 ]] && [[ ${#CF_ACCOUNT_ID} -gt 0 ]] && [[ ${#CF_API_TOKEN} -gt 0 ]] && [[ ${#CF_TUNNEL_NAME} -gt 0 ]] && [[ ${#CF_TUNNEL_CONFIG} -gt 0 ]]; then
+if [ "${#CF_TUNNEL_SIMPLE_TOKEN}" -gt 0 ]; then
+  echo "**** CF_TUNNEL_SIMPLE_TOKEN parameter found, no additional setup needed... ****"
+elif [[ ${#CF_ZONE_ID} -gt 0 ]] && [[ ${#CF_ACCOUNT_ID} -gt 0 ]] && [[ ${#CF_API_TOKEN} -gt 0 ]] && [[ ${#CF_TUNNEL_NAME} -gt 0 ]] && [[ ${#CF_TUNNEL_CONFIG} -gt 0 ]]; then
   if [[ ${#CF_TUNNEL_PASSWORD} -lt 32 ]]; then
     echo "**** Cloudflare tunnel password must be at least 32 characters long, exiting... ****"
     rm -rf /etc/services.d/cloudflared
     exit 1 
   else
-    echo "**** Cloudflare tunnel parameters found, starting cloudflare tunnel setup... ****"
+    echo "**** Cloudflare tunnel parameters found, checking for setup script dependencies... ****"
+    YQARCH="${ARCH}"
+    if [ "${YQ_ARCH}" = "armhf" ]; then 
+      YQARCH="arm" 
+    fi
+    echo "**** Temporarily installing /tmp/yq... ****"
+    curl -sLo /tmp/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQARCH}
+    chmod +x /tmp/yq
+
+    echo "**** Starting cloudflare tunnel setup... ****"
     echo "**** Creating cloudflare tunnel (${CF_TUNNEL_NAME}) via API... ****"
 
     CF_TUNNEL_SECRET="$(command echo ${CF_TUNNEL_PASSWORD} | base64 -w 0)"

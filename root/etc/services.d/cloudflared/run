@@ -1,3 +1,7 @@
 #!/usr/bin/with-contenv bash
 
-exec s6-setuidgid abc cloudflared tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+if [ "${#CF_TUNNEL_SIMPLE_TOKEN}" -gt 0 ]; then
+    exec cloudflared service install ${CF_TUNNEL_SIMPLE_TOKEN}
+else
+    exec s6-setuidgid abc cloudflared tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+fi
