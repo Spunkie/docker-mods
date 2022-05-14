@@ -1,0 +1,68 @@
+#!/usr/bin/with-contenv bash
+
+echo "**** Litestream setup script init... ****"
+
+echo "**** Checking litestream setup script requirements... ****"
+ARCH="$(command arch)"
+if [ "${ARCH}" = "x86_64" ]; then 
+  ARCH="amd64"
+elif [ "${ARCH}" = "aarch64" ]; then 
+  ARCH="arm64" 
+elif [ "${ARCH}" = "armv7l" ]; then 
+  ARCH="armhf" 
+else
+  echo "**** Unsupported Linux architecture ${ARCH} found, exiting... ****"
+  exit 1
+fi
+echo "**** Linux architecture found: ${ARCH} ****"
+
+echo "**** Checking for litestream setup script dependencies... ****"
+YQARCH="${ARCH}"
+if [ "${YQ_ARCH}" = "armhf" ]; then 
+  YQARCH="arm" 
+fi
+echo "**** Temporarily installing /tmp/yq... ****"
+curl -sLo /tmp/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQARCH}
+chmod +x /tmp/yq
+
+echo "**** Installing litestream...****"
+if [ -d "/litestream/" ]; then
+  echo "**** Moving /litestream/litestream-${ARCH} to /usr/local/bin/litestream... ****"
+  mv /litestream/litestream-${ARCH} /usr/local/bin/litestream
+
+  echo "**** Deleting tmp /litestream dir... ****"
+  rm -rf /litestream 
+
+  echo "**** Litestream installed ****"
+elif [ -x "$(command -v litestream)" ]; then
+  echo "**** Litestream already installed, skipping... ****"
+else
+  echo "**** Litestream missing, exiting... ****"
+  exit 1
+fi
+litestream -v
+
+echo "**** Checking for litestream parameters... ****"
+if [[ ${#REPLICA_URL} -gt 0 ]] && [[ ${#DB_PATH} -gt 0 ]] && [[ ${#LITESTREAM_CONFIG} -gt 0 ]]; then
+    echo "**** Generating litestream.yml... ****"
+    printf "${LITESTREAM_CONFIG}" > "/etc/litestream.yml"
+    /tmp/yq e /etc/litestream.yml
+    echo "**** Config for litestream saved to /etc/litestream.yml ****"
+
+
+  # Restore the database if it does not already exist.
+  if [ -f "${DB_PATH}" ]; then
+    echo "**** Database already exists, skipping restore... ****"
+  else
+    echo "**** No database found, restoring from replica if exists... ****"
+    exec litestream restore -v -if-replica-exists -o "${DB_PATH}" "${REPLICA_URL}"
+  fi
+else
+  : ${LITESTREAM_CONFIG?"Need to set LITESTREAM_CONFIG environment variable"}
+  : ${REPLICA_URL?"Need to set REPLICA_URL environment variable"}
+  : ${DB_PATH?"Need to set DB_PATH environment variable"}
+  echo "**** Litestream parameters blank or missing, skipped litestream db setup ****"
+  rm -rf /etc/services.d/litestream
+fi
+
+echo "**** Litestream setup script done, exiting... ****"

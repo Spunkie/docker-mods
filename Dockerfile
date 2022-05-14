@@ -1,33 +1,30 @@
 # Build container
 FROM golang:alpine AS buildstage
 
-ARG CLOUDFLARED_TAG
+ARG LITESTREAM_TAG
 
-RUN mkdir -p /root-layer/cloudflared
+RUN mkdir -p /root-layer/litestream
 WORKDIR /src
 
 RUN apk --no-cache add git build-base curl jq
 
-ENV GO111MODULE=on \
-    CGO_ENABLED=0
-
 RUN \
-  if [ -z "${CLOUDFLARED_TAG}" ]; then \
-    curl -s https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
+  if [ -z "${LITESTREAM_TAG}" ]; then \
+    curl -s https://api.github.com/repos/benbjohnson/litestream/releases/latest \
       | jq -rc ".tag_name" \
-      | xargs -I TAG sh -c 'git -c advice.detachedHead=false clone https://github.com/cloudflare/cloudflared --depth=1 --branch TAG .'; \
+      | xargs -I TAG sh -c 'git -c advice.detachedHead=false clone https://github.com/benbjohnson/litestream --depth=1 --branch TAG .'; \
   else \
-    git -c advice.detachedHead=false clone https://github.com/cloudflare/cloudflared --depth=1 --branch ${CLOUDFLARED_TAG} .; \
+    git -c advice.detachedHead=false clone https://github.com/benbjohnson/litestream --depth=1 --branch ${LITESTREAM_TAG} .; \
   fi
 
-RUN GOOS=linux GOARCH=amd64 make cloudflared
-RUN mv cloudflared /root-layer/cloudflared/cloudflared-amd64
+RUN make dist-linux
+RUN mv ./dist/litestream /root-layer/litestream/litestream-amd64
 
-RUN GOOS=linux GOARCH=arm64 make cloudflared
-RUN mv cloudflared /root-layer/cloudflared/cloudflared-arm64
+RUN make dist-linux-arm64
+RUN mv ./dist/litestream-linux-arm64 /root-layer/litestream/litestream-arm64
 
-RUN GOOS=linux GOARCH=arm make cloudflared
-RUN mv cloudflared /root-layer/cloudflared/cloudflared-armhf
+RUN make dist-linux-arm
+RUN mv ./dist/litestream-linux-arm /root-layer/litestream/litestream-armhf
 
 COPY root/ /root-layer/
 
