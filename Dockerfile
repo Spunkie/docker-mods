@@ -6,7 +6,7 @@ ARG LITESTREAM_TAG
 RUN mkdir -p /root-layer/litestream
 WORKDIR /src
 
-RUN apk --no-cache add git build-base curl jq
+RUN apk --no-cache add git build-base curl jq docker
 
 RUN \
   if [ -z "${LITESTREAM_TAG}" ]; then \
