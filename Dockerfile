@@ -1,11 +1,14 @@
 ARG LITESTREAM_TAG
 
 # Build container
-FROM --platform=linux/arm64 litestream:${LITESTREAM_TAG} AS buildstage-arm64
+FROM --platform=linux/arm64 litestream/litestream:${LITESTREAM_TAG} AS buildstage-arm64
 # Build container
-FROM --platform=linux/armhf litestream:${LITESTREAM_TAG} AS buildstage-armhf
+FROM --platform=linux/armhf litestream/litestream:${LITESTREAM_TAG} AS buildstage-armhf
+
 # Build container
 FROM golang:alpine AS buildstage-amd64
+
+ARG LITESTREAM_TAG
 
 RUN mkdir -p /root-layer/litestream
 WORKDIR /src
